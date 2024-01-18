@@ -1,0 +1,257 @@
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
+class Student {
+    private String name;
+    private int id;
+    private List<Course> enrolledCourses;
+    private Map<Course, Integer> grades;
+
+    public Student(String name, int id) {
+        this.name = name;
+        this.id = id;
+        this.enrolledCourses = new ArrayList<>();
+        this.grades = new HashMap<>();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void enrollInCourse(Course course) {
+        enrolledCourses.add(course);
+        course.incrementEnrolledStudents();
+    }
+
+    public void assignGrade(Course course, int grade) {
+        if (enrolledCourses.contains(course)) {
+            grades.put(course, grade);
+        } else {
+            System.out.println("Student is not enrolled in the specified course.");
+        }
+    }
+
+    // Other methods as needed
+}
+
+class Course {
+    private String courseCode;
+    private String courseName;
+    private int maxCapacity;
+    private static int totalEnrolledStudents = 0;
+
+    public Course(String courseCode, String courseName, int maxCapacity) {
+        this.courseCode = courseCode;
+        this.courseName = courseName;
+        this.maxCapacity = maxCapacity;
+    }
+
+    public String getCourseCode() {
+        return courseCode;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+
+    public static int getTotalEnrolledStudents() {
+        return totalEnrolledStudents;
+    }
+
+    public static void incrementEnrolledStudents() {
+        totalEnrolledStudents++;
+    }
+
+    public static void decrementEnrolledStudents() {
+        totalEnrolledStudents--;
+    }
+}
+
+class CourseManagement {
+    private static List<Course> courses = new ArrayList<>();
+    private static Map<Student, Map<Course, Integer>> overallGrades = new HashMap<>();
+
+    public static void addCourse(String courseCode, String courseName, int maxCapacity) {
+        Course newCourse = new Course(courseCode, courseName, maxCapacity);
+        courses.add(newCourse);
+    }
+
+    public static void enrollStudent(Student student, Course course) {
+        if (course.getTotalEnrolledStudents() < course.getMaxCapacity()) {
+            student.enrollInCourse(course);
+        } else {
+            System.out.println("Course has reached its maximum capacity. Enrollment failed.");
+        }
+    }
+
+    public static void assignGrade(Student student, Course course, int grade) {
+        student.assignGrade(course, grade);
+        overallGrades.computeIfAbsent(student, k -> new HashMap<>()).put(course, grade);
+    }
+
+    public static void calculateOverallGrade(Student student) {
+        Map<Course, Integer> studentGrades = overallGrades.getOrDefault(student, new HashMap<>());
+        int totalPoints = 0;
+        int totalCourses = studentGrades.size();
+
+        for (int grade : studentGrades.values()) {
+            totalPoints += grade;
+        }
+
+        double overallGrade = totalCourses > 0 ? (double) totalPoints / totalCourses : 0.0;
+        System.out.println("Overall Grade for Student " + student.getName() + " (ID: " + student.getId() + "): " + overallGrade);
+    }
+}
+
+class AdministratorInterface {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) {
+            System.out.println("\n===== Administrator Interface =====");
+            System.out.println("1. Add a new course");
+            System.out.println("2. Enroll students");
+            System.out.println("3. Assign grades");
+            System.out.println("4. Calculate overall course grades");
+            System.out.println("5. Exit");
+            System.out.print("Enter your choice: ");
+
+            int choice = scanner.nextInt();
+
+            switch (choice) {
+                case 1:
+                    addNewCourse(scanner);
+                    break;
+                case 2:
+                    enrollStudents(scanner);
+                    break;
+                case 3:
+                    assignGrades(scanner);
+                    break;
+                case 4:
+                    calculateOverallGrades(scanner);
+                    break;
+                case 5:
+                    System.out.println("Exiting Administrator Interface.");
+                    System.exit(0);
+                    break;
+                default:
+                    System.out.println("Invalid choice. Please enter a valid option.");
+            }
+        }
+    }
+
+    private static void addNewCourse(Scanner scanner) {
+        System.out.print("Enter Course Code: ");
+        String code = scanner.next();
+        System.out.print("Enter Course Name: ");
+        String name = scanner.next();
+        System.out.print("Enter Maximum Capacity: ");
+        int capacity = scanner.nextInt();
+
+        CourseManagement.addCourse(code, name, capacity);
+        System.out.println("Course added successfully.");
+    }
+
+    private static void enrollStudents(Scanner scanner) {
+        System.out.println("\n===== Enroll Students =====");
+        System.out.print("Enter Student Name: ");
+        String studentName = scanner.next();
+        System.out.print("Enter Student ID: ");
+        int studentId = scanner.nextInt();
+
+        Student student = new Student(studentName, studentId);
+
+        for (Course course : CourseManagement.courses) {
+            System.out.println(course.getCourseCode() + ": " + course.getCourseName() +
+                    " (Capacity: " + (course.getMaxCapacity() - course.getTotalEnrolledStudents()) + ")");
+        }
+
+        System.out.print("Enter Course Code to enroll in: ");
+        String courseCode = scanner.next();
+
+        Course selectedCourse = findCourseByCode(courseCode);
+
+        if (selectedCourse != null) {
+            CourseManagement.enrollStudent(student, selectedCourse);
+            System.out.println("Enrollment successful.");
+        } else {
+            System.out.println("Invalid Course Code.");
+        }
+    }
+
+    private static void assignGrades(Scanner scanner) {
+        // Implement grade assignment logic here
+        System.out.println("\n===== Assign Grades =====");
+
+        System.out.print("Enter Student ID: ");
+        int studentId = scanner.nextInt();
+        Student student = findStudentById(studentId);
+
+        if (student != null) {
+            for (Course course : student.enrolledCourses) {
+                System.out.println(course.getCourseCode() + ": " + course.getCourseName());
+            }
+
+            System.out.print("Enter Course Code to assign grade: ");
+            String courseCode = scanner.next();
+
+            Course selectedCourse = findCourseByCode(courseCode);
+
+            if (selectedCourse != null && student.enrolledCourses.contains(selectedCourse)) {
+                System.out.print("Enter Grade: ");
+                int grade = scanner.nextInt();
+                CourseManagement.assignGrade(student, selectedCourse, grade);
+                System.out.println("Grade assigned successfully.");
+            } else {
+                System.out.println("Invalid Course Code or student is not enrolled in the course.");
+            }
+        } else {
+            System.out.println("Student not found.");
+        }
+    }
+
+    private static void calculateOverallGrades(Scanner scanner) {
+        // Implement overall grade calculation logic here
+        System.out.println("\n===== Calculate Overall Grades =====");
+
+        System.out.print("Enter Student ID: ");
+        int studentId = scanner.nextInt();
+        Student student = findStudentById(studentId);
+
+        if (student != null) {
+            CourseManagement.calculateOverallGrade(student);
+        } else {
+            System.out.println("Student not found.");
+        }
+    }
+
+    private static Course findCourseByCode(String courseCode) {
+        for (Course course : CourseManagement.courses) {
+            if (course.getCourseCode().equals(courseCode)) {
+                return course;
+            }
+        }
+        return null;
+    }
+
+    private static Student findStudentById(int studentId) {
+        for (Student student : CourseManagement.overallGrades.keySet()) {
+            if (student.getId() == studentId) {
+                return student;
+            }
+        }
+        return null;
+    }
+}
